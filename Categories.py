@@ -110,10 +110,26 @@ def add_product():
 
 @app.route('/api/products', methods=['GET'])
 def get_products():
-    products = list(product_collection.find())
-    for p in products:
-        p['_id'] = str(p['_id'])
-    return jsonify(products)
+    """
+    Retrieves all products from the database.
+    Optionally filter by category.
+    """
+    category = request.args.get('category')
+    query = {}
+    if category:
+        query = {"category": category}
+    
+    try:
+        products = list(product_collection.find(query))
+        # Convert MongoDB ObjectId to string
+        for product in products:
+            product['_id'] = str(product['_id'])
+        
+        return jsonify(products), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 
 @app.route('/api/products/<id>', methods=['PUT'])
 def update_product(id):
