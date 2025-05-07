@@ -129,7 +129,24 @@ def get_products():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/products/<id>', methods=['GET'])
+def get_product_by_id(id):
+    """
+    Fetch a product by its unique ID from the database.
+    """
+    try:
+        # Query for the product by the ObjectId
+        product = product_collection.find_one({"_id": ObjectId(id)})
 
+        if not product:
+            return jsonify({"error": "Product not found"}), 404
+
+        # Convert MongoDB ObjectId to string for JSON response
+        product['_id'] = str(product['_id'])
+
+        return jsonify(product), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/products/<id>', methods=['PUT'])
 def update_product(id):
