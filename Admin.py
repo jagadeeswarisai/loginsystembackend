@@ -39,10 +39,19 @@ def signup():
     first_name = data.get('firstName')
     last_name = data.get('lastName')
     email = data.get('email')
+    confirm_email = data.get('confirmEmail')
     password = data.get('password')
+    confirm_password = data.get('confirmPassword')
 
-    if not all([first_name, last_name, email, password]):
+    # Basic validation
+    if not all([first_name, last_name, email, confirm_email, password, confirm_password]):
         return jsonify({"status": "error", "message": "All fields are required."}), 400
+
+    if email != confirm_email:
+        return jsonify({"status": "error", "message": "Emails do not match."}), 400
+
+    if password != confirm_password:
+        return jsonify({"status": "error", "message": "Passwords do not match."}), 400
 
     if users_collection.find_one({"email": email}):
         return jsonify({"status": "error", "message": "Email already registered."}), 400
@@ -58,7 +67,6 @@ def signup():
 
     return jsonify({"status": "success", "message": "Signup successful!"}), 200
 
-# Login Route
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
