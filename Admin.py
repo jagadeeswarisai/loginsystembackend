@@ -6,16 +6,21 @@ from pymongo import MongoClient
 import os
 from bson import ObjectId
 
+# Initialize Flask App
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173"])
 
+# CORS setup for localhost and Vercel frontend
+CORS(app, origins=[
+    "http://localhost:5173",
+    "https://login-system-lac-three.vercel.app"
+])
 
+# MongoDB connection
 client = MongoClient('mongodb://localhost:27017/')
 db = client['your_database']
 users_collection = db['users']
 
-
-
+# Upload Folder Setup
 UPLOAD_FOLDER = 'static/uploads/products'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -26,6 +31,8 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # --------- USER ROUTES --------- #
+
+# Signup Route
 @app.route('/signup', methods=['POST'])
 def signup():
     data = request.get_json()
@@ -51,6 +58,7 @@ def signup():
 
     return jsonify({"status": "success", "message": "Signup successful!"}), 200
 
+# Login Route
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -65,6 +73,7 @@ def login():
     else:
         return jsonify({"status": "error", "message": "User not found."}), 404
 
+# Admin Login Route
 @app.route('/admin-login', methods=['POST'])
 def admin_login():
     data = request.get_json()
@@ -72,6 +81,7 @@ def admin_login():
         return jsonify({"status": "success", "message": "Login successful!"}), 200
     return jsonify({"status": "error", "message": "Invalid credentials."}), 401
 
+# Get All Users
 @app.route('/users', methods=['GET'])
 def get_users():
     users = users_collection.find()
@@ -84,6 +94,7 @@ def get_users():
     } for u in users]
     return jsonify({"status": "success", "data": user_list}), 200
 
+# Edit User Email
 @app.route('/admin/edit-user', methods=['PUT'])
 def edit_user():
     data = request.get_json()
@@ -95,9 +106,6 @@ def edit_user():
         return jsonify({"status": "success", "message": "User email updated successfully."}), 200
     return jsonify({"status": "error", "message": "Failed to update user."}), 400
 
-
-
-
-
-app = Flask(__name__)
-CORS(app, origins=["https://login-system-lac-three.vercel.app"])
+# Start Flask App
+if __name__ == '__main__':
+    app.run(debug=True)
