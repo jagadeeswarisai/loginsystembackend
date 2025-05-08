@@ -9,7 +9,8 @@ import re
 app = Flask(__name__)
 
 
-CORS(app, origins=["https://login-system-lac-three.vercel.app", "http://localhost:5173"])
+CORS(app, origins="https://login-system-lac-three.vercel.app")
+
 
 client = MongoClient("mongodb://loginsystembackend-1.onrender.com")
 db = client.mydatabase  
