@@ -99,5 +99,5 @@ def edit_user():
 
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+app = Flask(__name__)
+CORS(app, origins=["https://login-system-lac-three.vercel.app"])
