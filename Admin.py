@@ -5,18 +5,18 @@ from pymongo import MongoClient
 import bcrypt
 import re
 
-# Initialize Flask App
+
 app = Flask(__name__)
 
-# CORS setup to allow frontend communication
-CORS(app, origins="https://login-system-lac-three.vercel.app")  # Modify as needed for your frontend URL
 
-# MongoDB setup
-client = MongoClient("mongodb://localhost:27017")  # Use your MongoDB URI if different
-db = client.mydatabase  # Use your database name
-users_collection = db.users  # The collection to store users
+CORS(app, origins="https://login-system-ahyy.vercel.app")  
 
-# Utility function to validate email format
+
+client = MongoClient("mongodb://localhost:27017")  
+db = client.mydatabase  
+users_collection = db.users  
+
+
 def validate_email(email):
     email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return re.match(email_regex, email)
