@@ -9,13 +9,12 @@ import re
 app = Flask(__name__)
 
 
-CORS(app, origins="https://login-system-ahyy.vercel.app")
+CORS(app, origins="https://login-system-lac-three.vercel.app")
 
 
-
-client = MongoClient("mongodb://localhost:27017")  
+client = MongoClient("mongodb://loginsystembackend-z5yb.onrender.com")
 db = client.mydatabase  
-users_collection = db.users  
+users_collection = db.users 
 
 
 def validate_email(email):
