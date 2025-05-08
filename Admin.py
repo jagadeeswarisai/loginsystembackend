@@ -9,7 +9,7 @@ import re
 app = Flask(__name__)
 
 # CORS setup to allow frontend communication
-CORS(app, origins="http://localhost:5173")  # Modify as needed for your frontend URL
+CORS(app, origins="https://login-system-lac-three.vercel.app")  # Modify as needed for your frontend URL
 
 # MongoDB setup
 client = MongoClient("mongodb://localhost:27017")  # Use your MongoDB URI if different
