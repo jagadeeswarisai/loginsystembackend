@@ -73,18 +73,22 @@ def login():
     else:
         return jsonify({"status": "error", "message": "User not found."}), 404
 
-# Admin login
+admin_email = os.getenv("ADMIN_EMAIL")
+admin_password_hash = os.getenv("ADMIN_PASSWORD_HASH")  # Store the hashed password securely
+
+# Admin login route
 @app.route('/admin-login', methods=['POST'])
 def admin_login():
     data = request.get_json()
-    admin_email = os.getenv("ADMIN_EMAIL")
-    admin_password = os.getenv("ADMIN_PASSWORD")
-    
-    if data.get('adminName') == admin_email and data.get('password') == admin_password:
-        return jsonify({"status": "success", "message": "Login successful!"}), 200
-    return jsonify({"status": "error", "message": "Invalid credentials."}), 401
+    email = data.get('email')
+    password = data.get('password')
 
-# Get users
+    # Check if the email and password match the admin credentials
+    if email == admin_email and bcrypt.checkpw(password.encode('utf-8'), admin_password_hash.encode('utf-8')):
+        return jsonify({"status": "success", "message": "Admin login successful!"}), 200
+    else:
+        return jsonify({"status": "error", "message": "Invalid credentials."}), 401
+
 @app.route('/users', methods=['GET'])
 def get_users():
     users = users_collection.find()
