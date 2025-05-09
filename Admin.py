@@ -11,7 +11,7 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app, origins="https://login-system-lac-three.vercel.app")  # Replace with your frontend URL
+CORS(app, origins=["http://localhost:5173", "https://login-system-lac-three.vercel.app"]) # Replace with your frontend URL
 
 # MongoDB setup
 mongo_uri = os.getenv("MONGO_URI")
