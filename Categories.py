@@ -6,14 +6,13 @@ from pymongo import MongoClient
 from bson import ObjectId
 
 app = Flask(__name__)
-
-CORS(app, origins="https://login-system-lac-three.vercel.app")
+CORS(app)
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-client = MongoClient('mongodb://loginsystembackendcategories.onrender.com')
+client = MongoClient('mongodb://localhost:27017/')
 db = client['your_db']
 category_collection = db['categories']
 product_collection = db['products']
