@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from pymongo import MongoClient
 import os
@@ -20,18 +20,26 @@ CORS(app, supports_credentials=True, origins=[
     "https://login-system-lac-three.vercel.app"
 ])
 
+# Connect to MongoDB
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
-db = client['your_database_name'] 
-db = client['your_db']  
+db = client['your_db']  # Make sure to use the correct database name
 
+# MongoDB collections
 users_collection = db['users']
 category_collection = db['categories']
 product_collection = db['products']
 
+# Configure upload folder for images
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+# Serve uploaded files (images) as static content
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# Admin routes
 @app.route('/signup', methods=['POST'])
 def signup_route():
     return signup()  # Directly call the signup function from Admin.py

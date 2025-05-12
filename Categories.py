@@ -7,31 +7,26 @@ from bson import ObjectId
 
 app = Flask(__name__)
 
-# Allow CORS for specific origins (for frontend)
-CORS(app, supports_credentials=True, origins=[
-    "https://login-system-lac-three.vercel.app",  # Change this to your actual frontend URL
-    "http://localhost:5173"  # For local development
-])
+CORS(app,
+     supports_credentials=True,
+     origins=[
+         "https://login-system-lac-three.vercel.app",
+         "http://localhost:5173"
+     ])
 
-# Define the upload folder
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Database connection (replace with your actual credentials)
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
 db = client['your_db']
 category_collection = db['categories']
 product_collection = db['products']
 
-# Serve images from the 'uploads' folder
+# Serve images
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    try:
-        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-    except FileNotFoundError:
-        return jsonify({'error': 'Image not found'}), 404
-
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # ---------------- CATEGORY ROUTES ----------------
 @app.route('/api/categories', methods=['POST'])
@@ -46,18 +41,14 @@ def add_category():
     filename = secure_filename(image.filename)
     image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
-    # Construct the full URL for the image
-    image_url = f"https://loginsystembackendecommercesite.onrender.com/uploads/{filename}"  # Replace with your app URL
-
     category = {
         'name': name,
         'description': description,
-        'image': image_url  # Store the full URL for the image
+        'image': filename
     }
 
     category_collection.insert_one(category)
     return jsonify({'message': 'Category added successfully'}), 201
-
 
 @app.route('/api/categories', methods=['GET'])
 def get_categories():
@@ -65,7 +56,6 @@ def get_categories():
     for cat in categories:
         cat['_id'] = str(cat['_id'])
     return jsonify(categories)
-
 
 @app.route('/api/categories/<id>', methods=['PUT'])
 def update_category(id):
@@ -75,29 +65,25 @@ def update_category(id):
         'description': data.get('description'),
     }
 
-    # If a new image is uploaded, save it and update the image URL
     if 'image' in request.files:
         image = request.files['image']
         filename = secure_filename(image.filename)
         image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        update_data['image'] = f"https://loginsystembackendecommercesite.onrender.com/uploads/{filename}"
+        update_data['image'] = filename
 
     category_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Category updated successfully'})
-
 
 @app.route('/api/categories/<id>', methods=['DELETE'])
 def delete_category(id):
     category = category_collection.find_one({'_id': ObjectId(id)})
     if category and category.get('image'):
         try:
-            # Remove the image from the server
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], category['image'].split('/')[-1]))
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], category['image']))
         except FileNotFoundError:
             pass
     category_collection.delete_one({'_id': ObjectId(id)})
     return jsonify({'message': 'Category deleted'})
-
 
 # ---------------- PRODUCT ROUTES ----------------
 @app.route('/api/products', methods=['POST'])
@@ -109,9 +95,6 @@ def add_product():
     if image:
         filename = secure_filename(image.filename)
         image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-
-    # Construct the full URL for the product image
-    image_url = f"https://loginsystembackendecommercesite.onrender.com/uploads/{filename}"  # Replace with your app URL
 
     product = {
         'name': data.get('name'),
@@ -125,12 +108,11 @@ def add_product():
         'tax': data.get('tax'),
         'warehouseLocation': data.get('warehouseLocation'),
         'category': data.get('category'),
-        'image': image_url  # Store the full URL for the image
+        'image': filename
     }
 
     product_collection.insert_one(product)
     return jsonify({'message': 'Product added successfully'}), 201
-
 
 @app.route('/api/products', methods=['GET'])
 def get_products():
@@ -153,7 +135,6 @@ def get_products():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/api/products/<id>', methods=['GET'])
 def get_product_by_id(id):
     """
@@ -173,7 +154,6 @@ def get_product_by_id(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/api/products/<id>', methods=['PUT'])
 def update_product(id):
     data = request.form
@@ -191,31 +171,27 @@ def update_product(id):
         'category': data.get('category'),
     }
 
-    # If a new image is uploaded, save it and update the image URL
     if 'image' in request.files:
         image = request.files['image']
         if image.filename:
             filename = secure_filename(image.filename)
             image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            update_data['image'] = f"https://loginsystembackendecommercesite.onrender.com/uploads/{filename}"
+            update_data['image'] = filename
 
     product_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Product updated successfully'})
-
 
 @app.route('/api/products/<id>', methods=['DELETE'])
 def delete_product(id):
     product = product_collection.find_one({'_id': ObjectId(id)})
     if product and product.get('image'):
         try:
-            # Remove the image from the server
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], product['image'].split('/')[-1]))
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], product['image']))
         except FileNotFoundError:
             pass
 
     product_collection.delete_one({'_id': ObjectId(id)})
     return jsonify({'message': 'Product deleted successfully'})
-
 
 if __name__ == '__main__':
     app.run(debug=True)
