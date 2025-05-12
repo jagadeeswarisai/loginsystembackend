@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from pymongo import MongoClient
+from flask import send_from_directory
 from Admin import signup, login, admin_login, get_users, edit_user  # Directly import the route functions
 from Categories import (
     get_categories, add_category,
@@ -26,6 +27,10 @@ db = client['your_db']
 users_collection = db['users']
 category_collection = db['categories']
 product_collection = db['products']
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
 @app.route('/signup', methods=['POST'])
