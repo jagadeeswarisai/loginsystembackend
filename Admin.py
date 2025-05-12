@@ -9,12 +9,17 @@ import re
 # Load environment variables from .env file
 load_dotenv()
 
-# Initialize Flask app
+from flask_cors import CORS
+
 app = Flask(__name__)
-CORS(app, supports_credentials=True, resources={r"/*": {"origins": [
-    "http://localhost:5173",
-    "https://login-system-lac-three.vercel.app/"
-]}})
+
+CORS(app,
+     supports_credentials=True,
+     origins=[
+         "https://login-system-lac-three.vercel.app",
+         "http://localhost:5173"
+     ])
+
 
 # MongoDB connection setup
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
@@ -62,7 +67,6 @@ def signup():
 })
     return jsonify({"message": "Signup successful!"}), 201
 
-# ========== User Login ========== 
 # ========== User Login ========== 
 @app.route('/login', methods=['POST'])
 def login():
