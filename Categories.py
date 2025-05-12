@@ -7,29 +7,31 @@ from bson import ObjectId
 
 app = Flask(__name__)
 
-# CORS setup
-CORS(app,
-     supports_credentials=True,
-     origins=[
-         "https://login-system-lac-three.vercel.app",
-         "http://localhost:5173"
-     ])
+# Allow CORS for specific origins (for frontend)
+CORS(app, supports_credentials=True, origins=[
+    "https://login-system-lac-three.vercel.app",  # Change this to your actual frontend URL
+    "http://localhost:5173"  # For local development
+])
 
-# Configurations for file upload
+# Define the upload folder
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# MongoDB setup
+# Database connection (replace with your actual credentials)
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
-db = client['your_db']  # Replace with your actual database name
+db = client['your_db']
 category_collection = db['categories']
 product_collection = db['products']
 
-# Serve images
+# Serve images from the 'uploads' folder
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    try:
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    except FileNotFoundError:
+        return jsonify({'error': 'Image not found'}), 404
+
 
 # ---------------- CATEGORY ROUTES ----------------
 @app.route('/api/categories', methods=['POST'])
@@ -56,12 +58,14 @@ def add_category():
     category_collection.insert_one(category)
     return jsonify({'message': 'Category added successfully'}), 201
 
+
 @app.route('/api/categories', methods=['GET'])
 def get_categories():
     categories = list(category_collection.find())
     for cat in categories:
         cat['_id'] = str(cat['_id'])
     return jsonify(categories)
+
 
 @app.route('/api/categories/<id>', methods=['PUT'])
 def update_category(id):
@@ -81,16 +85,19 @@ def update_category(id):
     category_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Category updated successfully'})
 
+
 @app.route('/api/categories/<id>', methods=['DELETE'])
 def delete_category(id):
     category = category_collection.find_one({'_id': ObjectId(id)})
     if category and category.get('image'):
         try:
+            # Remove the image from the server
             os.remove(os.path.join(app.config['UPLOAD_FOLDER'], category['image'].split('/')[-1]))
         except FileNotFoundError:
             pass
     category_collection.delete_one({'_id': ObjectId(id)})
     return jsonify({'message': 'Category deleted'})
+
 
 # ---------------- PRODUCT ROUTES ----------------
 @app.route('/api/products', methods=['POST'])
@@ -124,6 +131,7 @@ def add_product():
     product_collection.insert_one(product)
     return jsonify({'message': 'Product added successfully'}), 201
 
+
 @app.route('/api/products', methods=['GET'])
 def get_products():
     """
@@ -145,6 +153,7 @@ def get_products():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @app.route('/api/products/<id>', methods=['GET'])
 def get_product_by_id(id):
     """
@@ -163,6 +172,7 @@ def get_product_by_id(id):
         return jsonify(product), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/products/<id>', methods=['PUT'])
 def update_product(id):
@@ -192,17 +202,20 @@ def update_product(id):
     product_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Product updated successfully'})
 
+
 @app.route('/api/products/<id>', methods=['DELETE'])
 def delete_product(id):
     product = product_collection.find_one({'_id': ObjectId(id)})
     if product and product.get('image'):
         try:
+            # Remove the image from the server
             os.remove(os.path.join(app.config['UPLOAD_FOLDER'], product['image'].split('/')[-1]))
         except FileNotFoundError:
             pass
 
     product_collection.delete_one({'_id': ObjectId(id)})
     return jsonify({'message': 'Product deleted successfully'})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
