@@ -63,6 +63,7 @@ def signup():
     return jsonify({"message": "Signup successful!"}), 201
 
 # ========== User Login ========== 
+# ========== User Login ========== 
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -70,12 +71,13 @@ def login():
     pwd = data.get('password')
 
     user = users_collection.find_one({"email": email})
-    if user and bcrypt.checkpw(pwd.encode('utf-8'), user['password']).encode('utf-8'):
+    if user and bcrypt.checkpw(pwd.encode('utf-8'), user['password'].encode('utf-8')):
         return jsonify({"status": "success", "message": "Login successful!"}), 200
     elif user:
         return jsonify({"status": "error", "message": "Invalid password."}), 401
     else:
         return jsonify({"status": "error", "message": "User not found."}), 404
+
 
 # ========== Admin Login ========== 
 @app.route('/admin-login', methods=['POST'])
