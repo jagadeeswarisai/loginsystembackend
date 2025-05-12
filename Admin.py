@@ -11,7 +11,10 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": [
+    "http://localhost:5173",
+    "https://login-system-lac-three.vercel.app/"
+]}})
 
 # MongoDB connection setup
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
@@ -50,13 +53,13 @@ def signup():
     if users_collection.find_one({"email": email}):
         return jsonify({"message": "User already exists."}), 409
 
-    hashed_pwd = bcrypt.hashpw(pwd.encode('utf-8'), bcrypt.gensalt())
+    hashed_pwd = bcrypt.hashpw(pwd.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     users_collection.insert_one({
-        "first_name": first,
-        "last_name": last,
-        "email": email,
-        "password": hashed_pwd
-    })
+    "first_name": first,
+    "last_name": last,
+    "email": email,
+    "password": hashed_pwd  # this is now a string
+})
     return jsonify({"message": "Signup successful!"}), 201
 
 # ========== User Login ========== 
@@ -67,7 +70,7 @@ def login():
     pwd = data.get('password')
 
     user = users_collection.find_one({"email": email})
-    if user and bcrypt.checkpw(pwd.encode('utf-8'), user['password']):
+    if user and bcrypt.checkpw(pwd.encode('utf-8'), user['password']).encode('utf-8'):
         return jsonify({"status": "success", "message": "Login successful!"}), 200
     elif user:
         return jsonify({"status": "error", "message": "Invalid password."}), 401
