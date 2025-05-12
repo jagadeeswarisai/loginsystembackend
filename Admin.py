@@ -6,30 +6,29 @@ import os
 import bcrypt
 import re
 
+# Load environment variables from .env file
 load_dotenv()
 
-
+# Initialize Flask app
 app = Flask(__name__)
+CORS(app)
 
+# MongoDB connection setup
+client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
+db = client['your_database_name']  # Replace with your actual database name
+users_collection = db['users']  # Replace with your actual collection name
 
-CORS(app, origins=["http://localhost:5173"])
-
-
-mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
-client = MongoClient(mongo_uri)
-db = client["mydatabase"]
-users_collection = db.users
-
+# Admin credentials (use environment variables for better security)
 admin_email = os.getenv("ADMIN_EMAIL", "admin@gmail.com")
 admin_password_plain = os.getenv("ADMIN_PASSWORD", "admin123")
 admin_password_hash = bcrypt.hashpw(admin_password_plain.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-
+# Helper function: validate email format
 def validate_email(email):
     regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return re.match(regex, email)
 
-
+# ========== Signup ========== 
 @app.route('/signup', methods=['POST'])
 def signup():
     data = request.get_json()
@@ -60,7 +59,7 @@ def signup():
     })
     return jsonify({"message": "Signup successful!"}), 201
 
-# ====== User Login ======
+# ========== User Login ========== 
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -75,7 +74,7 @@ def login():
     else:
         return jsonify({"status": "error", "message": "User not found."}), 404
 
-# ====== Admin Login ======
+# ========== Admin Login ========== 
 @app.route('/admin-login', methods=['POST'])
 def admin_login():
     try:
@@ -83,7 +82,6 @@ def admin_login():
         email = data.get('email')
         password = data.get('password')
 
-        # Admin credentials check (example: change accordingly)
         if email == admin_email and bcrypt.checkpw(password.encode('utf-8'), admin_password_hash.encode('utf-8')):
             return jsonify({"status": "success", "message": "Admin login successful!"}), 200
         else:
@@ -91,7 +89,7 @@ def admin_login():
     except Exception as e:
         return jsonify({"status": "error", "message": f"Server error: {str(e)}"}), 500
 
-# ====== Get Users ======
+# ========== Get All Users ========== 
 @app.route('/users', methods=['GET'])
 def get_users():
     users = users_collection.find()
@@ -103,7 +101,7 @@ def get_users():
     } for u in users]
     return jsonify({"status": "success", "data": user_list}), 200
 
-# ====== Edit User Email ======
+# ========== Admin: Edit User Email ========== 
 @app.route('/admin/edit-user', methods=['PUT'])
 def edit_user():
     data = request.get_json()
@@ -122,6 +120,6 @@ def edit_user():
     else:
         return jsonify({"status": "error", "message": "No changes made."}), 400
 
-# ====== Run App ======
+# ========== Run the Flask App ========== 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
