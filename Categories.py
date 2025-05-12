@@ -7,6 +7,7 @@ from bson import ObjectId
 
 app = Flask(__name__)
 
+# CORS setup
 CORS(app,
      supports_credentials=True,
      origins=[
@@ -14,12 +15,14 @@ CORS(app,
          "http://localhost:5173"
      ])
 
+# Configurations for file upload
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+# MongoDB setup
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
-db = client['your_db']
+db = client['your_db']  # Replace with your actual database name
 category_collection = db['categories']
 product_collection = db['products']
 
@@ -41,10 +44,13 @@ def add_category():
     filename = secure_filename(image.filename)
     image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
+    # Construct the full URL for the image
+    image_url = f"https://your-flask-app-url/uploads/{filename}"  # Replace with your app URL
+
     category = {
         'name': name,
         'description': description,
-        'image': filename
+        'image': image_url  # Store the full URL for the image
     }
 
     category_collection.insert_one(category)
@@ -65,11 +71,12 @@ def update_category(id):
         'description': data.get('description'),
     }
 
+    # If a new image is uploaded, save it and update the image URL
     if 'image' in request.files:
         image = request.files['image']
         filename = secure_filename(image.filename)
         image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        update_data['image'] = filename
+        update_data['image'] = f"https://your-flask-app-url/uploads/{filename}"
 
     category_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Category updated successfully'})
@@ -79,7 +86,7 @@ def delete_category(id):
     category = category_collection.find_one({'_id': ObjectId(id)})
     if category and category.get('image'):
         try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], category['image']))
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], category['image'].split('/')[-1]))
         except FileNotFoundError:
             pass
     category_collection.delete_one({'_id': ObjectId(id)})
@@ -96,6 +103,9 @@ def add_product():
         filename = secure_filename(image.filename)
         image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
+    # Construct the full URL for the product image
+    image_url = f"https://your-flask-app-url/uploads/{filename}"  # Replace with your app URL
+
     product = {
         'name': data.get('name'),
         'description': data.get('description'),
@@ -108,7 +118,7 @@ def add_product():
         'tax': data.get('tax'),
         'warehouseLocation': data.get('warehouseLocation'),
         'category': data.get('category'),
-        'image': filename
+        'image': image_url  # Store the full URL for the image
     }
 
     product_collection.insert_one(product)
@@ -171,12 +181,13 @@ def update_product(id):
         'category': data.get('category'),
     }
 
+    # If a new image is uploaded, save it and update the image URL
     if 'image' in request.files:
         image = request.files['image']
         if image.filename:
             filename = secure_filename(image.filename)
             image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            update_data['image'] = filename
+            update_data['image'] = f"https://your-flask-app-url/uploads/{filename}"
 
     product_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Product updated successfully'})
@@ -186,7 +197,7 @@ def delete_product(id):
     product = product_collection.find_one({'_id': ObjectId(id)})
     if product and product.get('image'):
         try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], product['image']))
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], product['image'].split('/')[-1]))
         except FileNotFoundError:
             pass
 
