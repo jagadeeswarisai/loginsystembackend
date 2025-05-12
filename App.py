@@ -19,15 +19,13 @@ CORS(app, supports_credentials=True, origins=[
     "https://login-system-lac-three.vercel.app"
 ])
 
-from pymongo import MongoClient
-
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
-db = client['ecommerce']  # Use your actual database name
+db = client['your_database_name'] 
+db = client['your_db']  
 
 users_collection = db['users']
 category_collection = db['categories']
 product_collection = db['products']
-
 
 
 @app.route('/signup', methods=['POST'])
