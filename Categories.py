@@ -45,7 +45,7 @@ def add_category():
     image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
     # Construct the full URL for the image
-    image_url = f"https://your-flask-app-url/uploads/{filename}"  # Replace with your app URL
+    image_url = f"https://loginsystembackendecommercesite.onrender.com/uploads/{filename}"  # Replace with your app URL
 
     category = {
         'name': name,
@@ -76,7 +76,7 @@ def update_category(id):
         image = request.files['image']
         filename = secure_filename(image.filename)
         image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        update_data['image'] = f"https://your-flask-app-url/uploads/{filename}"
+        update_data['image'] = f"https://loginsystembackendecommercesite.onrender.com/uploads/{filename}"
 
     category_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Category updated successfully'})
@@ -104,7 +104,7 @@ def add_product():
         image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
     # Construct the full URL for the product image
-    image_url = f"https://your-flask-app-url/uploads/{filename}"  # Replace with your app URL
+    image_url = f"https://loginsystembackendecommercesite.onrender.com/uploads/{filename}"  # Replace with your app URL
 
     product = {
         'name': data.get('name'),
@@ -187,7 +187,7 @@ def update_product(id):
         if image.filename:
             filename = secure_filename(image.filename)
             image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            update_data['image'] = f"https://your-flask-app-url/uploads/{filename}"
+            update_data['image'] = f"https://loginsystembackendecommercesite.onrender.com/uploads/{filename}"
 
     product_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Product updated successfully'})
