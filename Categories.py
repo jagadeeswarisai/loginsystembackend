@@ -6,7 +6,13 @@ from pymongo import MongoClient
 from bson import ObjectId
 
 app = Flask(__name__)
-CORS(app)
+
+CORS(app,
+     supports_credentials=True,
+     origins=[
+         "https://login-system-lac-three.vercel.app",
+         "http://localhost:5173"
+     ])
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
