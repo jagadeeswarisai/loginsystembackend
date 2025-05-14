@@ -33,7 +33,6 @@ def uploaded_file(filename):
 def add_category():
     name = request.form.get('name')
     description = request.form.get('description')
-    group = request.form.get('group')  # <-- New group field
     image = request.files.get('image')
 
     if not name or not image:
@@ -45,8 +44,7 @@ def add_category():
     category = {
         'name': name,
         'description': description,
-        'image': filename,
-        'group': group  # <-- Save group in MongoDB
+        'image': filename
     }
 
     category_collection.insert_one(category)
@@ -54,14 +52,7 @@ def add_category():
 
 @app.route('/api/categories', methods=['GET'])
 def get_categories():
-    group = request.args.get('group')  # Fetch group from query params
-    query = {}
-    
-    if group:
-        query['group'] = group  # Add group filter
-    
-    categories = list(category_collection.find(query))
-    
+    categories = list(category_collection.find())
     for cat in categories:
         cat['_id'] = str(cat['_id'])
     return jsonify(categories)
