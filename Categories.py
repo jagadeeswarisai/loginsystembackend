@@ -57,6 +57,17 @@ def get_categories():
         cat['_id'] = str(cat['_id'])
     return jsonify(categories)
 
+@app.route('/api/categories/bygroup/<group>', methods=['GET'])
+def get_categories_by_group(group):
+    try:
+        categories = list(category_collection.find({'group': group}))
+        for cat in categories:
+            cat['_id'] = str(cat['_id'])
+        return jsonify(categories), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/categories/<id>', methods=['PUT'])
 def update_category(id):
     data = request.form
