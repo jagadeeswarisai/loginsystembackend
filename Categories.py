@@ -52,10 +52,16 @@ def add_category():
     category_collection.insert_one(category)
     return jsonify({'message': 'Category added successfully'}), 201
 
-
 @app.route('/api/categories', methods=['GET'])
 def get_categories():
-    categories = list(category_collection.find())
+    group = request.args.get('group')  # Fetch group from query params
+    query = {}
+    
+    if group:
+        query['group'] = group  # Add group filter
+    
+    categories = list(category_collection.find(query))
+    
     for cat in categories:
         cat['_id'] = str(cat['_id'])
     return jsonify(categories)
