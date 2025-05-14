@@ -33,10 +33,11 @@ def uploaded_file(filename):
 def add_category():
     name = request.form.get('name')
     description = request.form.get('description')
+    group = request.form.get('group')  # Added field for category group
     image = request.files.get('image')
 
-    if not name or not image:
-        return jsonify({'error': 'Name and image required'}), 400
+    if not name or not image or not group:  # Ensure 'group' is provided
+        return jsonify({'error': 'Name, image, and group are required'}), 400
 
     filename = secure_filename(image.filename)
     image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
@@ -44,11 +45,13 @@ def add_category():
     category = {
         'name': name,
         'description': description,
+        'group': group,  # Save the group field
         'image': filename
     }
 
     category_collection.insert_one(category)
     return jsonify({'message': 'Category added successfully'}), 201
+
 
 @app.route('/api/categories', methods=['GET'])
 def get_categories():
@@ -57,10 +60,11 @@ def get_categories():
         cat['_id'] = str(cat['_id'])
     return jsonify(categories)
 
+
 @app.route('/api/categories/bygroup/<group>', methods=['GET'])
 def get_categories_by_group(group):
     try:
-        categories = list(category_collection.find({'group': group}))
+        categories = list(category_collection.find({'group': group}))  # Filter by group
         for cat in categories:
             cat['_id'] = str(cat['_id'])
         return jsonify(categories), 200
@@ -74,6 +78,7 @@ def update_category(id):
     update_data = {
         'name': data.get('name'),
         'description': data.get('description'),
+        'group': data.get('group'),  # Update the group field if provided
     }
 
     if 'image' in request.files:
@@ -84,6 +89,7 @@ def update_category(id):
 
     category_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Category updated successfully'})
+
 
 @app.route('/api/categories/<id>', methods=['DELETE'])
 def delete_category(id):
