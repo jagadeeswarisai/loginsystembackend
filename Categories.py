@@ -31,13 +31,25 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def save_image(file):
-    if file and allowed_file(file.filename):
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        filename = f"{timestamp}_{secure_filename(file.filename)}"
-        path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(path)
-        return filename
-    return None
+    if not file:
+        print("No file provided")
+        return None
+    print("Received file:", file.filename)
+    if allowed_file(file.filename):
+        filename = datetime.now().strftime("%Y%m%d%H%M%S_") + secure_filename(file.filename)
+        full_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        print("Saving file to:", full_path)
+        try:
+            file.save(full_path)
+            print("File saved successfully.")
+            return filename
+        except Exception as e:
+            print("Error saving file:", e)
+            return None
+    else:
+        print("File extension not allowed:", file.filename)
+        return None
+
 
 # --- Serve Uploaded Files ---
 @app.route('/uploads/<filename>')
