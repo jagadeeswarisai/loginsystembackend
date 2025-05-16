@@ -1,7 +1,6 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-from datetime import datetime
 import os
 from pymongo import MongoClient
 from bson import ObjectId
@@ -18,6 +17,7 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max
 
+# Create uploads folder if not exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # --- MongoDB Connection ---
@@ -31,33 +31,37 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def save_image(file):
-    if not file:
-        print("No file provided")
-        return None
-    print("Received file:", file.filename)
-    if allowed_file(file.filename):
-        filename = datetime.now().strftime("%Y%m%d%H%M%S_") + secure_filename(file.filename)
-        full_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        print("Saving file to:", full_path)
-        try:
-            file.save(full_path)
-            print("File saved successfully.")
-            return filename
-        except Exception as e:
-            print("Error saving file:", e)
-            return None
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        # To avoid overwrite, append timestamp if file exists
+        if os.path.exists(filepath):
+            name, ext = os.path.splitext(filename)
+            filename = f"{name}_{int(datetime.now().timestamp())}{ext}"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        file.save(filepath)
+        return filename
+    return None
+
+# --- Routes ---
+
+@app.route('/upload', methods=['POST'])
+def upload_image():
+    if 'image' not in request.files:
+        return jsonify({"error": "No image part"}), 400
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    filename = save_image(file)
+    if filename:
+        return jsonify({"message": "Image uploaded", "filename": filename}), 200
     else:
-        print("File extension not allowed:", file.filename)
-        return None
+        return jsonify({"error": "Invalid file type"}), 400
 
-
-# --- Serve Uploaded Files ---
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-# ================= CATEGORY ROUTES =================
-
+# ===== CATEGORY ROUTES =====
 @app.route('/api/categories', methods=['POST'])
 def add_category():
     name = request.form.get('name')
@@ -69,6 +73,8 @@ def add_category():
         return jsonify({'error': 'Name, group, and valid image are required'}), 400
 
     filename = save_image(image)
+    if not filename:
+        return jsonify({'error': 'Invalid image file'}), 400
 
     category = {
         'name': name,
@@ -95,16 +101,16 @@ def get_categories_by_group(group):
 
 @app.route('/api/categories/<id>', methods=['PUT'])
 def update_category(id):
-    data = request.form
+    data = request.form.to_dict()
     update_data = {
         'name': data.get('name'),
         'description': data.get('description'),
         'group': data.get('group'),
     }
 
-    if 'image' in request.files and request.files['image']:
+    if 'image' in request.files:
         image = request.files['image']
-        if allowed_file(image.filename):
+        if image and allowed_file(image.filename):
             old = category_collection.find_one({'_id': ObjectId(id)})
             if old and old.get('image'):
                 try:
@@ -130,11 +136,11 @@ def delete_category(id):
     category_collection.delete_one({'_id': ObjectId(id)})
     return jsonify({'message': 'Category deleted'})
 
-# ================= PRODUCT ROUTES =================
+# ===== PRODUCT ROUTES =====
 
 @app.route('/api/products', methods=['POST'])
 def add_product():
-    data = request.form
+    data = request.form.to_dict()
     image = request.files.get('image')
     filename = save_image(image) if image else ''
 
@@ -176,7 +182,7 @@ def get_product_by_id(id):
 
 @app.route('/api/products/<id>', methods=['PUT'])
 def update_product(id):
-    data = request.form
+    data = request.form.to_dict()
     update_data = {
         'name': data.get('name'),
         'description': data.get('description'),
@@ -219,6 +225,6 @@ def delete_product(id):
     product_collection.delete_one({'_id': ObjectId(id)})
     return jsonify({'message': 'Product deleted successfully'})
 
-# ================= MAIN =================
+# ===== MAIN =====
 if __name__ == '__main__':
     app.run(debug=True)
