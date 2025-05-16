@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-from datetime import datetime
 import os
 from pymongo import MongoClient
 from bson import ObjectId
@@ -16,13 +15,13 @@ CORS(app, supports_credentials=True, origins=[
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # --- MongoDB Connection ---
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
-db = client['your_db']
+db = client['your_db']  # Replace with your database name
 category_collection = db['categories']
 product_collection = db['products']
 
@@ -30,26 +29,11 @@ product_collection = db['products']
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def save_image(file):
-    if not file:
-        print("No file provided")
-        return None
-    print("Received file:", file.filename)
-    if allowed_file(file.filename):
-        filename = datetime.now().strftime("%Y%m%d%H%M%S_") + secure_filename(file.filename)
-        full_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        print("Saving file to:", full_path)
-        try:
-            file.save(full_path)
-            print("File saved successfully.")
-            return filename
-        except Exception as e:
-            print("Error saving file:", e)
-            return None
-    else:
-        print("File extension not allowed:", file.filename)
-        return None
-
+def save_image(image):
+    filename = secure_filename(image.filename)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    image.save(filepath)
+    return filename
 
 # --- Serve Uploaded Files ---
 @app.route('/uploads/<filename>')
