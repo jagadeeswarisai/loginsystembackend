@@ -84,7 +84,6 @@ def get_categories_by_group(group):
         return jsonify(categories), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 @app.route('/api/categories/<id>', methods=['PUT'])
 def update_category(id):
     data = request.form
@@ -94,9 +93,9 @@ def update_category(id):
         'group': data.get('group'),
     }
 
-    if 'image' in request.files:
+    if 'image' in request.files and request.files['image']:
         image = request.files['image']
-        if image and allowed_file(image.filename):
+        if allowed_file(image.filename):
             old = category_collection.find_one({'_id': ObjectId(id)})
             if old and old.get('image'):
                 try:
@@ -105,9 +104,15 @@ def update_category(id):
                     pass
             filename = save_image(image)
             update_data['image'] = filename
+    else:
+        # If no new image uploaded, retain the existing image
+        existing_image = data.get('existingImage')
+        if existing_image:
+            update_data['image'] = existing_image
 
     category_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Category updated successfully'})
+
 
 @app.route('/api/categories/<id>', methods=['DELETE'])
 def delete_category(id):
