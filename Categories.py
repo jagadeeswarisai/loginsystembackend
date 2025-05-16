@@ -36,8 +36,11 @@ def save_image(file):
     if file and allowed_file(file.filename):
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         filename = f"{timestamp}_{secure_filename(file.filename)}"
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        print("Saving image at:", path)
+        file.save(path)
         return filename
+    print("File not allowed or missing")
     return None
 
 # Serve images
