@@ -124,8 +124,14 @@ def delete_category(id):
 @app.route('/api/products', methods=['POST'])
 def add_product():
     data = request.form
+    print("Form data received:", data)
     image = request.files.get('image')
+    if image:
+        print("Image received:", image.filename)
+    else:
+        print("No image received")
     filename = save_image(image) if image else ''
+    print("Saved image filename:", filename)
 
     product = {
         'name': data.get('name'),
@@ -141,8 +147,10 @@ def add_product():
         'category': data.get('category'),
         'image': filename
     }
+    print("Product document to insert:", product)
 
     result = product_collection.insert_one(product)
+    print("Inserted with ID:", result.inserted_id)
     return jsonify({'message': 'Product added successfully', 'id': str(result.inserted_id)}), 201
 
 @app.route('/api/products', methods=['GET'])
