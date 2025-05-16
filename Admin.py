@@ -16,7 +16,7 @@ app = Flask(__name__)
 CORS(app,
      supports_credentials=True,
      origins=[
-         "https://login-system-lac-three.vercel.app",
+         "https://login-system-git-master-jagadeeswari-ts-projects.vercel.app",
          "http://localhost:5173"
      ])
 
