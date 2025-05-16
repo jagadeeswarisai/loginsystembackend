@@ -6,29 +6,27 @@ import os
 from pymongo import MongoClient
 from bson import ObjectId
 
+# --- App Configuration ---
 app = Flask(__name__)
-CORS(app,
-     supports_credentials=True,
-     origins=[
-         "https://login-system-git-master-jagadeeswari-ts-projects.vercel.app",
-         "http://localhost:5173"
-     ])
+CORS(app, supports_credentials=True, origins=[
+    "https://login-system-lac-three.vercel.app",
+    "http://localhost:5173"
+])
 
-# Configuration
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max size
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# MongoDB
+# --- MongoDB Connection ---
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
 db = client['your_db']
 category_collection = db['categories']
 product_collection = db['products']
 
-# Helpers
+# --- Helper Functions ---
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -37,18 +35,17 @@ def save_image(file):
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         filename = f"{timestamp}_{secure_filename(file.filename)}"
         path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        print("Saving image at:", path)
         file.save(path)
         return filename
-    print("File not allowed or missing")
     return None
 
-# Serve images
+# --- Serve Uploaded Files ---
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# ---------------- CATEGORY ROUTES ----------------
+# ================= CATEGORY ROUTES =================
+
 @app.route('/api/categories', methods=['POST'])
 def add_category():
     name = request.form.get('name')
@@ -57,7 +54,7 @@ def add_category():
     image = request.files.get('image')
 
     if not name or not group or not image or not allowed_file(image.filename):
-        return jsonify({'error': 'Name, group, and a valid image are required'}), 400
+        return jsonify({'error': 'Name, group, and valid image are required'}), 400
 
     filename = save_image(image)
 
@@ -67,7 +64,6 @@ def add_category():
         'group': group,
         'image': filename
     }
-
     result = category_collection.insert_one(category)
     return jsonify({'message': 'Category added successfully', 'id': str(result.inserted_id)}), 201
 
@@ -80,13 +76,11 @@ def get_categories():
 
 @app.route('/api/categories/bygroup/<group>', methods=['GET'])
 def get_categories_by_group(group):
-    try:
-        categories = list(category_collection.find({'group': group}))
-        for cat in categories:
-            cat['_id'] = str(cat['_id'])
-        return jsonify(categories), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    categories = list(category_collection.find({'group': group}))
+    for cat in categories:
+        cat['_id'] = str(cat['_id'])
+    return jsonify(categories)
+
 @app.route('/api/categories/<id>', methods=['PUT'])
 def update_category(id):
     data = request.form
@@ -108,14 +102,10 @@ def update_category(id):
             filename = save_image(image)
             update_data['image'] = filename
     else:
-        # If no new image uploaded, retain the existing image
-        existing_image = data.get('existingImage')
-        if existing_image:
-            update_data['image'] = existing_image
+        update_data['image'] = data.get('existingImage', '')
 
     category_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Category updated successfully'})
-
 
 @app.route('/api/categories/<id>', methods=['DELETE'])
 def delete_category(id):
@@ -128,18 +118,13 @@ def delete_category(id):
     category_collection.delete_one({'_id': ObjectId(id)})
     return jsonify({'message': 'Category deleted'})
 
-# ---------------- PRODUCT ROUTES ----------------
+# ================= PRODUCT ROUTES =================
+
 @app.route('/api/products', methods=['POST'])
 def add_product():
     data = request.form
-    print("Form data received:", data)
     image = request.files.get('image')
-    if image:
-        print("Image received:", image.filename)
-    else:
-        print("No image received")
     filename = save_image(image) if image else ''
-    print("Saved image filename:", filename)
 
     product = {
         'name': data.get('name'),
@@ -155,10 +140,8 @@ def add_product():
         'category': data.get('category'),
         'image': filename
     }
-    print("Product document to insert:", product)
 
     result = product_collection.insert_one(product)
-    print("Inserted with ID:", result.inserted_id)
     return jsonify({'message': 'Product added successfully', 'id': str(result.inserted_id)}), 201
 
 @app.route('/api/products', methods=['GET'])
@@ -166,24 +149,18 @@ def get_products():
     category = request.args.get('category')
     query = {"category": category} if category else {}
 
-    try:
-        products = list(product_collection.find(query))
-        for product in products:
-            product['_id'] = str(product['_id'])
-        return jsonify(products), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    products = list(product_collection.find(query))
+    for product in products:
+        product['_id'] = str(product['_id'])
+    return jsonify(products)
 
 @app.route('/api/products/<id>', methods=['GET'])
 def get_product_by_id(id):
-    try:
-        product = product_collection.find_one({"_id": ObjectId(id)})
-        if not product:
-            return jsonify({"error": "Product not found"}), 404
-        product['_id'] = str(product['_id'])
-        return jsonify(product), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    product = product_collection.find_one({"_id": ObjectId(id)})
+    if not product:
+        return jsonify({"error": "Product not found"}), 404
+    product['_id'] = str(product['_id'])
+    return jsonify(product)
 
 @app.route('/api/products/<id>', methods=['PUT'])
 def update_product(id):
@@ -213,6 +190,8 @@ def update_product(id):
                     pass
             filename = save_image(image)
             update_data['image'] = filename
+    else:
+        update_data['image'] = data.get('existingImage', '')
 
     product_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Product updated successfully'})
@@ -225,9 +204,9 @@ def delete_product(id):
             os.remove(os.path.join(app.config['UPLOAD_FOLDER'], product['image']))
         except FileNotFoundError:
             pass
-
     product_collection.delete_one({'_id': ObjectId(id)})
     return jsonify({'message': 'Product deleted successfully'})
 
+# ================= MAIN =================
 if __name__ == '__main__':
     app.run(debug=True)
