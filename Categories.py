@@ -1,12 +1,12 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
+from datetime import datetime
 import os
 from pymongo import MongoClient
 from bson import ObjectId
 
 app = Flask(__name__)
-
 CORS(app,
      supports_credentials=True,
      origins=[
@@ -14,14 +14,31 @@ CORS(app,
          "http://localhost:5173"
      ])
 
+# Configuration
 UPLOAD_FOLDER = 'uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max size
 
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# MongoDB
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
 db = client['your_db']
 category_collection = db['categories']
 product_collection = db['products']
+
+# Helpers
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def save_image(file):
+    if file and allowed_file(file.filename):
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        filename = f"{timestamp}_{secure_filename(file.filename)}"
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        return filename
+    return None
 
 # Serve images
 @app.route('/uploads/<filename>')
@@ -33,25 +50,23 @@ def uploaded_file(filename):
 def add_category():
     name = request.form.get('name')
     description = request.form.get('description')
-    group = request.form.get('group')  # Added field for category group
+    group = request.form.get('group')
     image = request.files.get('image')
 
-    if not name or not image or not group:  # Ensure 'group' is provided
-        return jsonify({'error': 'Name, image, and group are required'}), 400
+    if not name or not group or not image or not allowed_file(image.filename):
+        return jsonify({'error': 'Name, group, and a valid image are required'}), 400
 
-    filename = secure_filename(image.filename)
-    image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    filename = save_image(image)
 
     category = {
         'name': name,
         'description': description,
-        'group': group,  # Save the group field
+        'group': group,
         'image': filename
     }
 
-    category_collection.insert_one(category)
-    return jsonify({'message': 'Category added successfully'}), 201
-
+    result = category_collection.insert_one(category)
+    return jsonify({'message': 'Category added successfully', 'id': str(result.inserted_id)}), 201
 
 @app.route('/api/categories', methods=['GET'])
 def get_categories():
@@ -60,17 +75,15 @@ def get_categories():
         cat['_id'] = str(cat['_id'])
     return jsonify(categories)
 
-
 @app.route('/api/categories/bygroup/<group>', methods=['GET'])
 def get_categories_by_group(group):
     try:
-        categories = list(category_collection.find({'group': group}))  # Filter by group
+        categories = list(category_collection.find({'group': group}))
         for cat in categories:
             cat['_id'] = str(cat['_id'])
         return jsonify(categories), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/categories/<id>', methods=['PUT'])
 def update_category(id):
@@ -78,18 +91,23 @@ def update_category(id):
     update_data = {
         'name': data.get('name'),
         'description': data.get('description'),
-        'group': data.get('group'),  # Update the group field if provided
+        'group': data.get('group'),
     }
 
     if 'image' in request.files:
         image = request.files['image']
-        filename = secure_filename(image.filename)
-        image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        update_data['image'] = filename
+        if image and allowed_file(image.filename):
+            old = category_collection.find_one({'_id': ObjectId(id)})
+            if old and old.get('image'):
+                try:
+                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], old['image']))
+                except FileNotFoundError:
+                    pass
+            filename = save_image(image)
+            update_data['image'] = filename
 
     category_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Category updated successfully'})
-
 
 @app.route('/api/categories/<id>', methods=['DELETE'])
 def delete_category(id):
@@ -107,11 +125,7 @@ def delete_category(id):
 def add_product():
     data = request.form
     image = request.files.get('image')
-
-    filename = ''
-    if image:
-        filename = secure_filename(image.filename)
-        image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    filename = save_image(image) if image else ''
 
     product = {
         'name': data.get('name'),
@@ -128,45 +142,29 @@ def add_product():
         'image': filename
     }
 
-    product_collection.insert_one(product)
-    return jsonify({'message': 'Product added successfully'}), 201
+    result = product_collection.insert_one(product)
+    return jsonify({'message': 'Product added successfully', 'id': str(result.inserted_id)}), 201
 
 @app.route('/api/products', methods=['GET'])
 def get_products():
-    """
-    Retrieves all products from the database.
-    Optionally filter by category.
-    """
     category = request.args.get('category')
-    query = {}
-    if category:
-        query = {"category": category}
-    
+    query = {"category": category} if category else {}
+
     try:
         products = list(product_collection.find(query))
-        # Convert MongoDB ObjectId to string
         for product in products:
             product['_id'] = str(product['_id'])
-        
         return jsonify(products), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/products/<id>', methods=['GET'])
 def get_product_by_id(id):
-    """
-    Fetch a product by its unique ID from the database.
-    """
     try:
-        # Query for the product by the ObjectId
         product = product_collection.find_one({"_id": ObjectId(id)})
-
         if not product:
             return jsonify({"error": "Product not found"}), 404
-
-        # Convert MongoDB ObjectId to string for JSON response
         product['_id'] = str(product['_id'])
-
         return jsonify(product), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -190,9 +188,14 @@ def update_product(id):
 
     if 'image' in request.files:
         image = request.files['image']
-        if image.filename:
-            filename = secure_filename(image.filename)
-            image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        if image and allowed_file(image.filename):
+            old = product_collection.find_one({'_id': ObjectId(id)})
+            if old and old.get('image'):
+                try:
+                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], old['image']))
+                except FileNotFoundError:
+                    pass
+            filename = save_image(image)
             update_data['image'] = filename
 
     product_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
