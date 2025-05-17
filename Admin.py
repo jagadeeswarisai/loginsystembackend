@@ -80,6 +80,8 @@ def login():
 
 
 # ========== Admin Login ========== 
+admin_password_hash = os.getenv("ADMIN_PASSWORD_HASH")
+
 @app.route('/admin-login', methods=['POST'])
 def admin_login():
     try:
@@ -92,7 +94,9 @@ def admin_login():
         else:
             return jsonify({"status": "error", "message": "Invalid credentials."}), 401
     except Exception as e:
+        print(f"Admin login error: {e}")
         return jsonify({"status": "error", "message": f"Server error: {str(e)}"}), 500
+
 
 # ========== Get All Users ========== 
 @app.route('/users', methods=['GET'])
