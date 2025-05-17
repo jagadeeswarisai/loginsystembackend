@@ -6,28 +6,31 @@ import os
 import bcrypt
 import re
 
+# Load environment variables from .env file
 load_dotenv()
+
+from flask_cors import CORS
 
 app = Flask(__name__)
 
-CORS(app,
-     supports_credentials=True,
-     origins=[
-         "https://login-system-4xtj.vercel.app",
-         "http://localhost:5173"
-     ],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"]
-)
+CORS(app, supports_credentials=True, origins=[
+    "https://login-system-4xtj.vercel.app"
+    "http://localhost:5173"
+])
 
+
+
+# MongoDB connection setup
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
-db = client['your_database_name']
-users_collection = db['users']
+db = client['your_database_name']  # Replace with your actual database name
+users_collection = db['users']  # Replace with your actual collection name
 
+# Admin credentials (use environment variables for better security)
 admin_email = os.getenv("ADMIN_EMAIL", "admin@gmail.com")
 admin_password_plain = os.getenv("ADMIN_PASSWORD", "admin123")
-admin_password_hash = bcrypt.hashpw(admin_password_plain.encode('utf-8'), bcrypt.gensalt())
+admin_password_hash = bcrypt.hashpw(admin_password_plain.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
+# Helper function: validate email format
 def validate_email(email):
     regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return re.match(regex, email)
@@ -80,8 +83,6 @@ def login():
 
 
 # ========== Admin Login ========== 
-admin_password_hash = os.getenv("ADMIN_PASSWORD_HASH")
-
 @app.route('/admin-login', methods=['POST'])
 def admin_login():
     try:
@@ -94,9 +95,7 @@ def admin_login():
         else:
             return jsonify({"status": "error", "message": "Invalid credentials."}), 401
     except Exception as e:
-        print(f"Admin login error: {e}")
         return jsonify({"status": "error", "message": f"Server error: {str(e)}"}), 500
-
 
 # ========== Get All Users ========== 
 @app.route('/users', methods=['GET'])
