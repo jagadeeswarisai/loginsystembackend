@@ -13,11 +13,12 @@ from Categories import (
 
 # Initialize Flask app
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # Enable CORS for specific origins
 CORS(app, supports_credentials=True, origins=[
     "http://localhost:5173",
-    "https://login-system-lac-three.vercel.app"
+    "https://login-system-4xtj.vercel.app"
 ])
 
 # Connect to MongoDB
