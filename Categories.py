@@ -21,7 +21,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # --- MongoDB Connection ---
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
-db = client['your_db']  # Replace with your database name
+db = client['Ecommerce-db']  # Replace with your database name
 category_collection = db['categories']
 product_collection = db['products']
 
