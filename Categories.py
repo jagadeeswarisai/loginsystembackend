@@ -7,37 +7,53 @@ from bson import ObjectId
 
 # --- App Configuration ---
 app = Flask(__name__)
+
+# Configure uploads folder and allowed extensions
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max upload size
+
+# Ensure upload folder exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Enable CORS for your frontend URLs
 CORS(app, supports_credentials=True, origins=[
     "https://login-system-lac-three.vercel.app",
     "http://localhost:5173"
 ])
 
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
-
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
 # --- MongoDB Connection ---
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
-db = client['Ecommerce-db']  # Replace with your database name
+db = client['your_db']  # Replace 'your_db' with your actual DB name
 category_collection = db['categories']
 product_collection = db['products']
 
 # --- Helper Functions ---
+
 def allowed_file(filename):
+    """Check if the uploaded file has an allowed extension"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def save_image(image):
+    """Save uploaded image to the uploads folder and return filename"""
     filename = secure_filename(image.filename)
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     image.save(filepath)
     return filename
 
-# --- Serve Uploaded Files ---
+def delete_image(filename):
+    """Delete image file from uploads folder if it exists"""
+    if filename:
+        path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if os.path.exists(path):
+            os.remove(path)
+
+# --- Routes to serve uploaded images ---
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
+    """Serve uploaded files"""
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # ================= CATEGORY ROUTES =================
@@ -89,15 +105,14 @@ def update_category(id):
     if 'image' in request.files and request.files['image']:
         image = request.files['image']
         if allowed_file(image.filename):
+            # Delete old image file
             old = category_collection.find_one({'_id': ObjectId(id)})
             if old and old.get('image'):
-                try:
-                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], old['image']))
-                except FileNotFoundError:
-                    pass
+                delete_image(old['image'])
             filename = save_image(image)
             update_data['image'] = filename
     else:
+        # If no new image uploaded, keep the existing image
         update_data['image'] = data.get('existingImage', '')
 
     category_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
@@ -107,12 +122,9 @@ def update_category(id):
 def delete_category(id):
     category = category_collection.find_one({'_id': ObjectId(id)})
     if category and category.get('image'):
-        try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], category['image']))
-        except FileNotFoundError:
-            pass
+        delete_image(category['image'])
     category_collection.delete_one({'_id': ObjectId(id)})
-    return jsonify({'message': 'Category deleted'})
+    return jsonify({'message': 'Category deleted successfully'})
 
 # ================= PRODUCT ROUTES =================
 
@@ -120,7 +132,10 @@ def delete_category(id):
 def add_product():
     data = request.form
     image = request.files.get('image')
-    filename = save_image(image) if image else ''
+    filename = ''
+
+    if image and allowed_file(image.filename):
+        filename = save_image(image)
 
     product = {
         'name': data.get('name'),
@@ -178,12 +193,10 @@ def update_product(id):
     if 'image' in request.files:
         image = request.files['image']
         if image and allowed_file(image.filename):
+            # Delete old image
             old = product_collection.find_one({'_id': ObjectId(id)})
             if old and old.get('image'):
-                try:
-                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], old['image']))
-                except FileNotFoundError:
-                    pass
+                delete_image(old['image'])
             filename = save_image(image)
             update_data['image'] = filename
     else:
@@ -196,13 +209,10 @@ def update_product(id):
 def delete_product(id):
     product = product_collection.find_one({'_id': ObjectId(id)})
     if product and product.get('image'):
-        try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], product['image']))
-        except FileNotFoundError:
-            pass
+        delete_image(product['image'])
     product_collection.delete_one({'_id': ObjectId(id)})
     return jsonify({'message': 'Product deleted successfully'})
 
-# ================= MAIN =================
+# --- Run the app ---
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5000)
