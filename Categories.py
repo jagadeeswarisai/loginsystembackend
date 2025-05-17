@@ -1,44 +1,39 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
-import os
 from pymongo import MongoClient
 from bson import ObjectId
+import cloudinary
+import cloudinary.uploader
 
 # --- App Configuration ---
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=[
-  "https://login-system-4xtj.vercel.app",
+    "https://login-system-4xtj.vercel.app",
     "http://localhost:5173"
 ])
 
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
-
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# --- Cloudinary Configuration ---
+cloudinary.config(
+    cloud_name='YOUR_CLOUD_NAME',      # உங்கள் Cloudinary Cloud Name
+    api_key='YOUR_API_KEY',            # உங்கள் API Key
+    api_secret='YOUR_API_SECRET',      # உங்கள் API Secret
+    secure=True
+)
 
 # --- MongoDB Connection ---
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
-db = client['your_db']  # Replace with your database name
+db = client['your_db']  # உங்கள் DB Name
 category_collection = db['categories']
 product_collection = db['products']
 
-# --- Helper Functions ---
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def save_image(image):
-    filename = secure_filename(image.filename)
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    image.save(filepath)
-    return filename
-
-# --- Serve Uploaded Files ---
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    upload_result = cloudinary.uploader.upload(image)
+    return upload_result['secure_url']
 
 # ================= CATEGORY ROUTES =================
 
@@ -52,13 +47,13 @@ def add_category():
     if not name or not group or not image or not allowed_file(image.filename):
         return jsonify({'error': 'Name, group, and valid image are required'}), 400
 
-    filename = save_image(image)
+    image_url = save_image(image)
 
     category = {
         'name': name,
         'description': description,
         'group': group,
-        'image': filename
+        'image': image_url
     }
     result = category_collection.insert_one(category)
     return jsonify({'message': 'Category added successfully', 'id': str(result.inserted_id)}), 201
@@ -89,14 +84,9 @@ def update_category(id):
     if 'image' in request.files and request.files['image']:
         image = request.files['image']
         if allowed_file(image.filename):
-            old = category_collection.find_one({'_id': ObjectId(id)})
-            if old and old.get('image'):
-                try:
-                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], old['image']))
-                except FileNotFoundError:
-                    pass
-            filename = save_image(image)
-            update_data['image'] = filename
+            # No need to delete old image from Cloudinary here unless you want to
+            image_url = save_image(image)
+            update_data['image'] = image_url
     else:
         update_data['image'] = data.get('existingImage', '')
 
@@ -106,13 +96,12 @@ def update_category(id):
 @app.route('/api/categories/<id>', methods=['DELETE'])
 def delete_category(id):
     category = category_collection.find_one({'_id': ObjectId(id)})
-    if category and category.get('image'):
-        try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], category['image']))
-        except FileNotFoundError:
-            pass
-    category_collection.delete_one({'_id': ObjectId(id)})
-    return jsonify({'message': 'Category deleted'})
+    if category:
+        # Optionally delete image from Cloudinary via API here if you have public_id stored
+        category_collection.delete_one({'_id': ObjectId(id)})
+        return jsonify({'message': 'Category deleted'})
+    else:
+        return jsonify({'error': 'Category not found'}), 404
 
 # ================= PRODUCT ROUTES =================
 
@@ -120,7 +109,7 @@ def delete_category(id):
 def add_product():
     data = request.form
     image = request.files.get('image')
-    filename = save_image(image) if image else ''
+    image_url = save_image(image) if image and allowed_file(image.filename) else ''
 
     product = {
         'name': data.get('name'),
@@ -134,7 +123,7 @@ def add_product():
         'tax': data.get('tax'),
         'warehouseLocation': data.get('warehouseLocation'),
         'category': data.get('category'),
-        'image': filename
+        'image': image_url
     }
 
     result = product_collection.insert_one(product)
@@ -178,14 +167,8 @@ def update_product(id):
     if 'image' in request.files:
         image = request.files['image']
         if image and allowed_file(image.filename):
-            old = product_collection.find_one({'_id': ObjectId(id)})
-            if old and old.get('image'):
-                try:
-                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], old['image']))
-                except FileNotFoundError:
-                    pass
-            filename = save_image(image)
-            update_data['image'] = filename
+            image_url = save_image(image)
+            update_data['image'] = image_url
     else:
         update_data['image'] = data.get('existingImage', '')
 
@@ -195,13 +178,12 @@ def update_product(id):
 @app.route('/api/products/<id>', methods=['DELETE'])
 def delete_product(id):
     product = product_collection.find_one({'_id': ObjectId(id)})
-    if product and product.get('image'):
-        try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], product['image']))
-        except FileNotFoundError:
-            pass
-    product_collection.delete_one({'_id': ObjectId(id)})
-    return jsonify({'message': 'Product deleted successfully'})
+    if product:
+        # Optionally delete image from Cloudinary here if public_id stored
+        product_collection.delete_one({'_id': ObjectId(id)})
+        return jsonify({'message': 'Product deleted successfully'})
+    else:
+        return jsonify({'error': 'Product not found'}), 404
 
 # ================= MAIN =================
 if __name__ == '__main__':
