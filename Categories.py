@@ -14,9 +14,9 @@ CORS(app, supports_credentials=True, origins=[
 
 # --- Cloudinary Configuration ---
 cloudinary.config(
-    cloud_name='YOUR_CLOUD_NAME',      # உங்கள் Cloudinary Cloud Name
-    api_key='YOUR_API_KEY',            # உங்கள் API Key
-    api_secret='YOUR_API_SECRET',      # உங்கள் API Secret
+    cloud_name='dklysh3ty',      # உங்கள் Cloudinary Cloud Name
+    api_key='536781396976572',            # உங்கள் API Key
+    api_secret='-dKXwlRlrkT3ks66LcaY7TzuJHE',      # உங்கள் API Secret
     secure=True
 )
 
