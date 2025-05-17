@@ -21,7 +21,7 @@ cloudinary.config(
 
 # MongoDB connection
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
-db = client['your_db']  # உங்கள் DB பெயர்
+db = client['your_db']
 category_collection = db['categories']
 product_collection = db['products']
 
