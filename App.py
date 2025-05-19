@@ -89,7 +89,7 @@ def get_products_route():
 
 @app.route('/api/products/<id>', methods=['GET'])
 def get_product_by_id_route(id):
-    return get_product_by_id(id)  # Directly call the get_product_by_id function from Categories.py
+    return get_product_by_id(id)
 
 @app.route('/api/products/<id>', methods=['PUT'])
 def update_product_route(id):

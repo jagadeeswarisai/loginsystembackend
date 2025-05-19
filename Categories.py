@@ -62,6 +62,14 @@ def get_categories():
         cat['_id'] = str(cat['_id'])
     return jsonify(categories)
 
+@app.route('/api/categories/bygroup/<group>', methods=['GET'])
+def get_categories_by_group(group):
+    categories = list(category_collection.find({'group': group}))
+    for cat in categories:
+        cat['_id'] = str(cat['_id'])
+    return jsonify(categories)
+
+
 @app.route('/api/categories/<id>', methods=['PUT'])
 def update_category(id):
     data = request.form
@@ -136,6 +144,16 @@ def get_products():
     for product in products:
         product['_id'] = str(product['_id'])
     return jsonify(products)
+
+@app.route('/api/products/<id>', methods=['GET'])
+def get_product_by_id(id):
+    product = product_collection.find_one({'_id': ObjectId(id)})
+    if product:
+        product['_id'] = str(product['_id'])
+        return jsonify(product)
+    else:
+        return jsonify({'error': 'Product not found'}), 404
+
 
 @app.route('/api/products/<id>', methods=['PUT'])
 def update_product(id):
