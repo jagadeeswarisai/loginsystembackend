@@ -23,7 +23,7 @@ product_collection = db['products']
 cloudinary.config(
     cloud_name="dklysh3ty",
     api_key="536781396976572",
-    api_secret="your_actual_api_secret_here"  # Replace this with your actual secret
+    api_secret="dKXwlRlrkT3ks66"  # Replace this with your actual secret
 )
 
 # === CATEGORY ROUTES ===
