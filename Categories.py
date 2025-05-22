@@ -1,51 +1,32 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
-import os
 from pymongo import MongoClient
 from bson import ObjectId
-import uuid
+import cloudinary
+import cloudinary.uploader
+from collections import defaultdict
 
-# --- App Configuration ---
+# --- Flask App Setup ---
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=[
-  "https://login-system-4xtj.vercel.app",
-    "http://localhost:5173"
+    "http://localhost:5173",
+    "https://login-system-4xtj.vercel.app"
 ])
 
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
-
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# --- MongoDB Connection ---
-client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
-db = client['your_db']  # Replace with your database name
+# --- MongoDB Setup ---
+client = MongoClient("mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/")
+db = client['your_db']  # Replace with your DB name
 category_collection = db['categories']
 product_collection = db['products']
 
-# --- Helper Functions ---
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+# --- Cloudinary Configuration ---
+cloudinary.config(
+    cloud_name="dklysh3ty",
+    api_key="536781396976572",
+    api_secret="your_actual_api_secret_here"  # Replace this with your actual secret
+)
 
-def save_image(image):
-    if image:
-        filename = secure_filename(image.filename)
-        # Add a unique identifier to avoid filename conflicts
-        unique_filename = f"{uuid.uuid4().hex}_{filename}"
-        image_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-        image.save(image_path)
-        return unique_filename
-    return None
-
-# --- Serve Uploaded Files ---
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-# ================= CATEGORY ROUTES =================
+# === CATEGORY ROUTES ===
 
 @app.route('/api/categories', methods=['POST'])
 def add_category():
@@ -54,19 +35,21 @@ def add_category():
     group = request.form.get('group')
     image = request.files.get('image')
 
-    if not name or not group or not image or not allowed_file(image.filename):
-        return jsonify({'error': 'Name, group, and valid image are required'}), 400
+    if not name or not group or not image:
+        return jsonify({'error': 'Name, group, and image are required'}), 400
 
-    filename = save_image(image)
+    # Upload image to Cloudinary
+    upload_result = cloudinary.uploader.upload(image)
+    image_url = upload_result.get('secure_url')
 
     category = {
         'name': name,
         'description': description,
         'group': group,
-        'image': filename
+        'image': image_url
     }
-    result = category_collection.insert_one(category)
-    return jsonify({'message': 'Category added successfully', 'id': str(result.inserted_id)}), 201
+    res = category_collection.insert_one(category)
+    return jsonify({'message': 'Category added', 'id': str(res.inserted_id)}), 201
 
 @app.route('/api/categories', methods=['GET'])
 def get_categories():
@@ -75,35 +58,45 @@ def get_categories():
         cat['_id'] = str(cat['_id'])
     return jsonify(categories)
 
-@app.route('/api/categories/bygroup/<group>', methods=['GET'])
-def get_categories_by_group(group):
-    categories = list(category_collection.find({'group': group}))
+@app.route('/api/categories/group/<group_name>', methods=['GET'])
+def get_categories_by_group(group_name):
+    categories = list(category_collection.find({'group': group_name}))
     for cat in categories:
         cat['_id'] = str(cat['_id'])
     return jsonify(categories)
 
+@app.route('/api/categories/grouped', methods=['GET'])
+def get_categories_grouped():
+    categories = list(category_collection.find())
+    grouped = defaultdict(list)
+    for cat in categories:
+        cat['_id'] = str(cat['_id'])
+        grouped[cat['group']].append(cat)
+    return jsonify(grouped)
+
 @app.route('/api/categories/<id>', methods=['PUT'])
 def update_category(id):
-    data = request.form
+    category = category_collection.find_one({'_id': ObjectId(id)})
+    if not category:
+        return jsonify({'error': 'Category not found'}), 404
+
+    name = request.form.get('name')
+    description = request.form.get('description')
+    group = request.form.get('group')
+    existing_image = request.form.get('existingImage')
+
     update_data = {
-        'name': data.get('name'),
-        'description': data.get('description'),
-        'group': data.get('group'),
+        'name': name,
+        'description': description,
+        'group': group
     }
 
-    if 'image' in request.files and request.files['image']:
+    if 'image' in request.files:
         image = request.files['image']
-        if allowed_file(image.filename):
-            old = category_collection.find_one({'_id': ObjectId(id)})
-            if old and old.get('image'):
-                try:
-                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], old['image']))
-                except FileNotFoundError:
-                    pass
-            filename = save_image(image)
-            update_data['image'] = filename
+        upload_result = cloudinary.uploader.upload(image)
+        update_data['image'] = upload_result.get('secure_url')
     else:
-        update_data['image'] = data.get('existingImage', '')
+        update_data['image'] = existing_image
 
     category_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Category updated successfully'})
@@ -111,21 +104,25 @@ def update_category(id):
 @app.route('/api/categories/<id>', methods=['DELETE'])
 def delete_category(id):
     category = category_collection.find_one({'_id': ObjectId(id)})
-    if category and category.get('image'):
-        try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], category['image']))
-        except FileNotFoundError:
-            pass
-    category_collection.delete_one({'_id': ObjectId(id)})
-    return jsonify({'message': 'Category deleted'})
+    if not category:
+        return jsonify({'error': 'Category not found'}), 404
 
-# ================= PRODUCT ROUTES =================
+    category_collection.delete_one({'_id': ObjectId(id)})
+    return jsonify({'message': 'Category deleted successfully'})
+
+# === PRODUCT ROUTES ===
 
 @app.route('/api/products', methods=['POST'])
 def add_product():
     data = request.form
     image = request.files.get('image')
-    filename = save_image(image) if image else ''
+
+    if not data.get('name') or not data.get('category') or not image:
+        return jsonify({'error': 'Name, category, and image are required'}), 400
+
+    # Upload product image to Cloudinary
+    upload_result = cloudinary.uploader.upload(image)
+    image_url = upload_result.get('secure_url')
 
     product = {
         'name': data.get('name'),
@@ -139,11 +136,11 @@ def add_product():
         'tax': data.get('tax'),
         'warehouseLocation': data.get('warehouseLocation'),
         'category': data.get('category'),
-        'image': filename
+        'image': image_url
     }
 
-    result = product_collection.insert_one(product)
-    return jsonify({'message': 'Product added successfully', 'id': str(result.inserted_id)}), 201
+    res = product_collection.insert_one(product)
+    return jsonify({'message': 'Product added', 'id': str(res.inserted_id)}), 201
 
 @app.route('/api/products', methods=['GET'])
 def get_products():
@@ -151,8 +148,8 @@ def get_products():
     query = {"category": category} if category else {}
 
     products = list(product_collection.find(query))
-    for product in products:
-        product['_id'] = str(product['_id'])
+    for prod in products:
+        prod['_id'] = str(prod['_id'])
     return jsonify(products)
 
 @app.route('/api/products/<id>', methods=['GET'])
@@ -165,6 +162,10 @@ def get_product_by_id(id):
 
 @app.route('/api/products/<id>', methods=['PUT'])
 def update_product(id):
+    product = product_collection.find_one({'_id': ObjectId(id)})
+    if not product:
+        return jsonify({'error': 'Product not found'}), 404
+
     data = request.form
     update_data = {
         'name': data.get('name'),
@@ -182,17 +183,10 @@ def update_product(id):
 
     if 'image' in request.files:
         image = request.files['image']
-        if image and allowed_file(image.filename):
-            old = product_collection.find_one({'_id': ObjectId(id)})
-            if old and old.get('image'):
-                try:
-                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], old['image']))
-                except FileNotFoundError:
-                    pass
-            filename = save_image(image)
-            update_data['image'] = filename
+        upload_result = cloudinary.uploader.upload(image)
+        update_data['image'] = upload_result.get('secure_url')
     else:
-        update_data['image'] = data.get('existingImage', '')
+        update_data['image'] = data.get('existingImage')
 
     product_collection.update_one({'_id': ObjectId(id)}, {'$set': update_data})
     return jsonify({'message': 'Product updated successfully'})
@@ -200,14 +194,12 @@ def update_product(id):
 @app.route('/api/products/<id>', methods=['DELETE'])
 def delete_product(id):
     product = product_collection.find_one({'_id': ObjectId(id)})
-    if product and product.get('image'):
-        try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], product['image']))
-        except FileNotFoundError:
-            pass
+    if not product:
+        return jsonify({'error': 'Product not found'}), 404
+
     product_collection.delete_one({'_id': ObjectId(id)})
     return jsonify({'message': 'Product deleted successfully'})
 
-# ================= MAIN =================
+# === Run Server ===
 if __name__ == '__main__':
     app.run(debug=True)
