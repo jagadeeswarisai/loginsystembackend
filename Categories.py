@@ -4,6 +4,7 @@ from werkzeug.utils import secure_filename
 import os
 from pymongo import MongoClient
 from bson import ObjectId
+import uuid
 
 # --- App Configuration ---
 app = Flask(__name__)
@@ -30,10 +31,14 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def save_image(image):
-    filename = secure_filename(image.filename)
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    image.save(filepath)
-    return filename
+    if image:
+        filename = secure_filename(image.filename)
+        # Add a unique identifier to avoid filename conflicts
+        unique_filename = f"{uuid.uuid4().hex}_{filename}"
+        image_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        image.save(image_path)
+        return unique_filename
+    return None
 
 # --- Serve Uploaded Files ---
 @app.route('/uploads/<filename>')
