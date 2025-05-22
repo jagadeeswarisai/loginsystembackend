@@ -17,7 +17,7 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # Enable CORS for specific origins
 CORS(app, supports_credentials=True, origins=[
-    "https://login-system-4xtj.vercel.app"
+    "https://login-system-4xtj.vercel.app",
     "http://localhost:5173"
 ])
 
