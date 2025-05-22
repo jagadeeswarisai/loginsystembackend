@@ -9,8 +9,8 @@ from collections import defaultdict
 # --- Flask App Setup ---
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=[
-    "http://localhost:5173",
-    "https://login-system-4xtj.vercel.app"
+    "https://login-system-4xtj.vercel.app",
+     "http://localhost:5173"
 ])
 
 # --- MongoDB Setup ---
