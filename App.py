@@ -17,9 +17,10 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # Enable CORS for specific origins
 CORS(app, supports_credentials=True, origins=[
-    "http://localhost:5173",
     "https://login-system-4xtj.vercel.app"
+    "http://localhost:5173"
 ])
+
 
 # Connect to MongoDB
 client = MongoClient('mongodb+srv://jagadeeswarisai43:login12345@cluster0.dup95ax.mongodb.net/')
